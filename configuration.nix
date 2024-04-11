@@ -167,8 +167,9 @@
 
 
 
-      displayManager.lightdm = {
+      displayManager.gdm = {
         enable = true;
+        wayland = true;
       };
     };
     dbus.enable = true;
