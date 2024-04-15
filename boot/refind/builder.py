@@ -1,4 +1,7 @@
 #! @python3@/bin/python3 -B
+
+# Source: https://gist.github.com/betaboon/97abed457de8be43f89e7ca49d33d58d
+
 import argparse
 import os
 import os.path
@@ -9,12 +12,11 @@ import glob
 import datetime
 import shutil
 import ctypes
-
 libc = ctypes.CDLL("libc.so.6")
 
-extra_config = """
+extra_config = '''
 @extraConfig@
-"""
+'''
 
 
 def mkdir_p(path):
@@ -27,10 +29,7 @@ def mkdir_p(path):
 
 def system_dir(profile, generation):
     if profile:
-        return "/nix/var/nix/profiles/system-profiles/%s-%d-link" % (
-            profile,
-            generation,
-        )
+        return "/nix/var/nix/profiles/system-profiles/%s-%d-link" % (profile, generation)
     return "/nix/var/nix/profiles/system-%d-link" % (generation)
 
 
@@ -40,20 +39,14 @@ def copy_if_not_exists(source, dest):
 
 
 def get_generations(profile=None):
-    gen_list = subprocess.check_output(
-        [
-            "@nix@/bin/nix-env",
-            "--list-generations",
-            "-p",
-            "/nix/var/nix/profiles/%s"
-            % ("system-profiles/" + profile if profile else "system"),
-            "--option",
-            "build-users-group",
-            "",
-        ],
-        universal_newlines=True,
-    )
-    gen_lines = gen_list.split("\n")
+    gen_list = subprocess.check_output([
+        "@nix@/bin/nix-env",
+        "--list-generations",
+        "-p",
+        "/nix/var/nix/profiles/%s" % ("system-profiles/" + profile if profile else "system"),
+        "--option", "build-users-group", ""
+    ], universal_newlines=True)
+    gen_lines = gen_list.split('\n')
     gen_lines.pop()
     return [(profile, int(line.split()[0])) for line in gen_lines]
 
@@ -61,8 +54,7 @@ def get_generations(profile=None):
 def get_profiles():
     if os.path.isdir("/nix/var/nix/profiles/system-profiles/"):
         return [
-            x
-            for x in os.listdir("/nix/var/nix/profiles/system-profiles/")
+            x for x in os.listdir("/nix/var/nix/profiles/system-profiles/")
             if not x.endswith("-link")
         ]
     return []
@@ -94,7 +86,7 @@ def describe_generation(generation_dir):
     kernel_version = os.path.basename(module_dir)
 
     build_time = int(os.path.getctime(generation_dir))
-    build_date = datetime.datetime.fromtimestamp(build_time).strftime("%F")
+    build_date = datetime.datetime.fromtimestamp(build_time).strftime('%F')
 
     description = "NixOS {}, Linux Kernel {}, Built on {}".format(
         nixos_version, kernel_version, build_date
@@ -117,7 +109,7 @@ def generation_details(profile, generation):
         "kernel": kernel,
         "initrd": initrd,
         "kernel_params": kernel_params,
-        "description": description,
+        "description": description
     }
 
 
@@ -138,59 +130,45 @@ submenuentry "Generation {generation} {description}" {{
 }}
 """
 
-
 def write_refind_config(path, default_generation, generations):
-    with open(path, "w") as f:
+    with open(path, 'w') as f:
         if "@timeout@" != "":
             f.write("timeout @timeout@")
+        f.write(extra_config)
 
         rev_generations = sorted(generations, key=lambda x: x[1], reverse=True)
         submenuentries = []
         for generation in rev_generations:
-            submenuentries.append(
-                SUBMENUENTRY.format(**generation_details(*generation))
-            )
+            submenuentries.append(SUBMENUENTRY.format(
+                **generation_details(*generation)
+            ))
 
-        f.write(
-            MENU_ENTRY.format(
-                **generation_details(*default_generation),
-                submenuentries="\n".join(submenuentries)
-            )
-        )
-
-        f.write(extra_config)
+        f.write(MENU_ENTRY.format(
+            **generation_details(*default_generation),
+            submenuentries="\n".join(submenuentries)
+        ))
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Update NixOS-related systemd-boot files"
-    )
-    parser.add_argument(
-        "default_config",
-        metavar="DEFAULT-CONFIG",
-        help="The default NixOS config to boot",
-    )
+    parser = argparse.ArgumentParser(description='Update NixOS-related systemd-boot files')
+    parser.add_argument('default_config', metavar='DEFAULT-CONFIG', help='The default NixOS config to boot')
     args = parser.parse_args()
 
     mkdir_p("@efiSysMountPoint@/efi/refind")
 
     if os.getenv("NIXOS_INSTALL_BOOTLOADER") == "1":
+
         if "@canTouchEfiVariables@" == "1":
             subprocess.check_call(
                 ["@refind@/bin/refind-install"],
-                env={
-                    "PATH": ":".join(
-                        [
-                            "@efibootmgr@/bin",
-                            "@coreutils@/bin",
-                            "@utillinux@/bin",
-                            "@gnugrep@/bin",
-                            "@gnused@/bin",
-                            "@gawk@/bin",
-                            "@findutils@/bin",
-                        ]
-                    )
-                },
+                env={"PATH": ":".join([
+                    "@efibootmgr@/bin",
+                    "@coreutils@/bin",
+                    "@utillinux@/bin",
+                    "@gnugrep@/bin",
+                    "@gnused@/bin",
+                    "@gawk@/bin",
+                ])}
             )
         else:
             print("DONT KNOW WHAT TO DO")
@@ -201,19 +179,8 @@ def main():
             if os.path.exists(icons_dir + "-backup"):
                 shutil.rmtree(icons_dir + "-backup")
             os.rename(icons_dir, icons_dir + "-backup")
-            print(
-                "Notice: Backed up existing extra-icons directory as extra-icons-backup."
-            )
+            print("Notice: Backed up existing extra-icons directory as extra-icons-backup.")
         shutil.copytree("@extraIcons@", icons_dir)
-
-    if "@extraThemes@" != "":
-        themes_dir = "@efiSysMountPoint@/efi/refind/themes"
-        if os.path.exists(themes_dir):
-            if os.path.exists(themes_dir + "-backup"):
-                shutil.rmtree(themes_dir + "-backup")
-            os.rename(themes_dir, themes_dir + "-backup")
-            print("Notice: Backed up existing themes directory as themes-backup.")
-        shutil.copytree("@extraThemes@", themes_dir)
 
     generations = get_generations()
     for profile in get_profiles():
@@ -224,7 +191,9 @@ def main():
             default_generation = generation
 
     write_refind_config(
-        "@efiSysMountPoint@/efi/refind/refind.conf", default_generation, generations
+        "@efiSysMountPoint@/efi/refind/refind.conf",
+        default_generation,
+        generations
     )
 
     # Since fat32 provides little recovery facilities after a crash,
@@ -233,11 +202,8 @@ def main():
     # event sync the efi filesystem after each update.
     rc = libc.syncfs(os.open("@efiSysMountPoint@", os.O_RDONLY))
     if rc != 0:
-        print(
-            "could not sync @efiSysMountPoint@: {}".format(os.strerror(rc)),
-            file=sys.stderr,
-        )
+        print("could not sync @efiSysMountPoint@: {}".format(os.strerror(rc)), file=sys.stderr)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
