@@ -14,19 +14,19 @@
 
   # Use the systemd-boot EFI boot loader.
   # boot.loader.systemd-boot.enable = true;
-  # boot.loader.efi.canTouchEfiVariables = true;
-  
-  # GRUB
-  boot.loader.grub.enable = true;
-  boot.loader.grub.efiSupport = true;
-  boot.loader.grub.efiInstallAsRemovable = true;
+  boot.loader.efi = {
+    enable = true;
+    efiSysMountPoint = "/boot/efi";
+    canTouchEfiVariables = true;
+    loader.efi = {
+      rEFInd = {
+        enable = true;
+        recommendedFor = "efi";
+      };
+    };
+  };
 
-  # Kernel Module
-  boot.initrd.kernelModules = [ "nvidia" ];
-
-  boot.extraModulePackages = [ config.boot.kernelPackages.nvidia_x11 ];
-
-  networking.hostName = "nixos"; # Define your hostname.
+  # networking.hostName = "nixos"; # Define your hostname.
   # Pick only one of the below networking options.
   # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
   networking.networkmanager.enable = true;  # Easiest to use and most distros use this by default.
@@ -64,49 +64,19 @@
   # services.xserver.libinput.enable = true;
 
   # Define a user account. Don't forget to set a password with ‘passwd’.
-  users.users.wladimir = {
+  users.users.dev = {
     isNormalUser = true;
-    home = "/home/wladimir";
-    description = "dev.Wladimir";
-    extraGroups = [ "wheel" "networkmanager" ];
+    extraGroups = [ "wheel" ];
+    packages = with pkgs; [
+    ];
   };
 
   # List packages installed in system profile. To search, run:
   # $ nix search wget
   environment.systemPackages = with pkgs; [
-    vim # Do not forget to add an editor to edit configuration.nix! The Nano editor is also installed by default.
+    rEFInd
+    vim
     wget
-    kitty
-    polkit_gnome
-    libva-utils
-    fuseiso
-    udiskie
-    gnome.adwaita-icon-theme
-    gnome.gnome-themes-extra
-    nvidia-vaapi-driver
-    gsettings-desktop-schemas
-    swaynotificationcenter
-    wlr-randr
-    ydotool
-    wl-clipboard
-    hyprland-protocols
-    hyprpicker
-    swayidle
-    swaylock
-    xdg-desktop-portal-hyprland
-    hyprpaper
-    wofi
-    firefox-wayland
-    swww
-    grim
-    xdg-utils
-    xdg-desktop-portal
-    xdg-desktop-portal-gtk
-    qt5.qtwayland
-    qt5.qmake
-    qt5.qtwayland
-    adwaita-qt
-    adwaita-qt6
   ];
 
   # Some programs need SUID wrappers, can be configured further or are
@@ -116,123 +86,6 @@
   #   enable = true;
   #   enableSSHSupport = true;
   # };
-
-  # XDG Portals
-  xdg = {
-    autostart.enable = true;
-
-    portal = {
-      enable = true;
-      extraPortals = [
-        pkgs.xdg-desktop-portal
-        pkgs.xdg-desktop-portal-gtk
-      ];
-    };
-  };
-
-  # Security
-  security = {
-    pam.services.swaylock = {
-      text = ''
-        auth include login
-      '';
-    };
-  };
-
-  # Hardware
-  hardware = {
-    opengl = {
-      enable = true;
-      driSupport = true;
-    };
-    nvidia = {
-      modesetting.enable = true;
-      open = false;
-      nvidiaSettings = true;
-      package = config.boot.kernelPackages.nvidiaPackages.stable;
-      forceFullCompositionPipeline = true;
-      powerManagement.enable = true;
-    };
-  };
-
-  # Services
-  services = {
-    xserver = {
-      enable = true;
-      layout = "us";
-      xkbVariant = "";
-      excludePackages = [ pkgs.xterm ];
-      videoDrivers = [ "nvidia" ];
-      libinput.enable = true;
-
-
-
-      displayManager.gdm = {
-        enable = true;
-        wayland = true;
-      };
-    };
-    dbus.enable = true;
-    gvfs.enable = true;
-    tumbler.enable = true;
-    gnome = {
-      sushi.enable = true;
-      gnome-keyring.enable = true;
-    };
-  };
-
-  # Programs
-  programs = {
-    hyprland = {
-      enable = true;
-      nvidiaPatches = true;
-      xwayland = {
-        enable = true;
-      };
-    };
-    waybar = {
-      enable = true;
-      package = pkgs.waybar.overrideAttrs (oldAttrs: {
-        mesonFlags = oldAttrs.mesonFlags ++ [ "-Dexperimental=true" ];
-      });
-    };
-    thunar = {
-      enable = true;
-      plugins = with pkgs.xfce; [
-        thunar-archive-plugin
-        thunar-volman
-      ];
-    };
-  };
-
-  # NixPkgs
-  nixpkgs = {
-    config = {
-      allowUnfree = true;
-    };
-  };
-  
-  # Variables
-  environment.sessionVariables = {
-    POLKIT_AUTH_AGENT = "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1";
-    GSETTINGS_SCHEMA_DIR = "${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}/glib-2.0/schemas";
-    LIBVA_DRIVER_NAME = "nvidia";
-    XDG_SESSION_TYPE = "wayland";
-    GBM_BACKEND = "nvidia-drm";
-    __GLX_VENDOR_LIBRARY_NAME = "nvidia";
-    WLR_NO_HARDWARE_CURSORS = "1";
-    NIXOS_OZONE_WL = "1";
-    MOZ_ENABLE_WAYLAND = "1";
-    SDL_VIDEODRIVER = "wayland";
-    _JAVA_AWT_WM_NONREPARENTING = "1";
-    CLUTTER_BACKEND = "wayland";
-    WLR_RENDERER = "vulkan";
-    XDG_CURRENT_DESKTOP = "Hyprland";
-    XDG_SESSION_DESKTOP = "Hyprland";
-    GTK_USE_PORTAL = "1";
-    NIXOS_XDG_OPEN_USE_PORTAL = "1";
-  };
-  
 
   # List services that you want to enable:
 
@@ -269,4 +122,3 @@
   system.stateVersion = "23.11"; # Did you read the comment?
 
 }
-
