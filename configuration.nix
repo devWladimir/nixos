@@ -14,17 +14,51 @@
 
   # Use the systemd-boot EFI boot loader.
   # boot.loader.systemd-boot.enable = true;
-  boot.loader.efi = {
-    enable = true;
-    efiSysMountPoint = "/boot/efi";
-    canTouchEfiVariables = true;
-    loader.efi = {
-      rEFInd = {
-        enable = true;
-        recommendedFor = "efi";
+  # boot.loader.efi = {
+  #   enable = true;
+  #   efiSysMountPoint = "/boot/efi";
+  #   canTouchEfiVariables = true;
+  #   loader.efi = {
+  #     rEFInd = {
+  #       enable = true;
+  #       recommendedFor = "efi";
+  #     };
+  #   };
+  # };
+
+  boot.loader.refind =
+    let
+      theme = pkgs.stdenv.mkDerivation {
+        name = "rEFInd-minimal-themes";
+        version = "master";
+
+        src = pkgs.fetchFromGitHub {
+          owner = "quantrancse";
+          repo = "rEFInd-minimal-themes";
+          rev = "ba0742e235b33d5f13e6c7e2b6a46fe7ba1634aa";
+          hash = "sha256-A2rsWyCldo1TjySVKs4PO5PyCM/adn+LPp3lXyNpZoA=";
+        };
+
+        patches = [ ../modules/refind-theme.patch ];
+
+        dontConfigure = true;
+        dontBuild = true;
+        dontFixup = true;
+
+        installPhase = ''
+          mkdir -p $out
+          cp -r * $out
+        '';
       };
+    in
+    {
+      enable = true;
+      extraConfig = ''
+        include themes/rEFInd-minimal-dark/theme.conf
+        scanfor external,manual
+      '';
+      extraThemes = [ theme ];
     };
-  };
 
   # networking.hostName = "nixos"; # Define your hostname.
   # Pick only one of the below networking options.
